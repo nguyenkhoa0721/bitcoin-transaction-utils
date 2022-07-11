@@ -27,7 +27,7 @@ export class Transaction {
         });
     }
     toJSON() {
-        console.log(this._tx);
+        return this._tx;
     }
     async toHex(): Promise<any> {
         let buffer = Buffer.alloc(1000);
