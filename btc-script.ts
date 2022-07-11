@@ -1,7 +1,7 @@
 import * as crypto from 'crypto';
 import bs58check from 'bs58check';
 let bip66 = require('bip66');
-let OPS = require('../helpers/btc-ops-mapping.json');
+let OPS = require('./btc-ops-mapping.json');
 
 let ROPS: any = {};
 for (let op in OPS) {
