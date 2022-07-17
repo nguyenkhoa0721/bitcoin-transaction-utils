@@ -87,6 +87,7 @@ export class RawTransaction {
                 txid,
                 hash,
                 vout,
+                script: scriptSig,
                 scriptSig,
                 sequence,
             });
