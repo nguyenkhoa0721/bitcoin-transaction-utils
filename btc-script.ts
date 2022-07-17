@@ -1,13 +1,9 @@
 import * as crypto from 'crypto';
 import bs58check from 'bs58check';
+import OPS from './btc-ops-mapping.json';
+import BN from 'bn.js';
 let bip66 = require('bip66');
-let OPS = require('./btc-ops-mapping.json');
 
-let ROPS: any = {};
-for (let op in OPS) {
-    let code = OPS[op];
-    ROPS[code] = op;
-}
 function hash160(data: any) {
     return ripemd160(sha256(data));
 }
@@ -92,8 +88,14 @@ function toDER(x: any) {
     if (x[0] & 0x80) return Buffer.concat([Buffer.alloc(1), x], 1 + x.length);
     return x;
 }
+
+function readUInt64(buff: Buffer, offset: number) {
+    var word0 = buff.readUInt32LE(offset);
+    var word1 = buff.readUInt32LE(offset + 4);
+    return new BN(word0).add(new BN(word1).mul(new BN(100000000))).toString(10);
+}
+
 export {
-    ROPS,
     OPS,
     p2pkhScript,
     fromBase58Check,
@@ -103,4 +105,6 @@ export {
     p2pkhScriptSig,
     compileScript,
     hash160,
+    readUInt64,
 };
+
