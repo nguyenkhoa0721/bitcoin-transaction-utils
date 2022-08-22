@@ -1,0 +1,31 @@
+{
+  "name": "btc-create-raw-transaction",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nguyenkhoa0721/btc-create-raw-transaction.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/nguyenkhoa0721/btc-create-raw-transaction/issues"
+  },
+  "homepage": "https://github.com/nguyenkhoa0721/btc-create-raw-transaction#readme",
+  "devDependencies": {
+    "@types/bn.js": "^5.1.0",
+    "@types/bs58check": "^2.1.0",
+    "@types/node": "^18.7.3",
+    "@types/secp256k1": "^4.0.3"
+  },
+  "dependencies": {
+    "bip66": "^1.1.5",
+    "bs58check": "^2.1.2",
+    "crypto": "^1.0.1",
+    "secp256k1": "^4.0.3"
+  }
+}

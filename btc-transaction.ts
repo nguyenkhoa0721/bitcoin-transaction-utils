@@ -1,125 +1,95 @@
 import BN from 'bn.js';
-import { off } from 'process';
 import secp256k1 from 'secp256k1';
 
 import {
     readUInt64,
     p2pkhScriptSig,
-    p2pkhScript,
     fromBase58Check,
     encodeSig,
     sha256,
     hash160,
+    generateScript,
 } from './btc-script';
 
-function revertTx(txByteRevertedHex: string) {
-    const bytes = txByteRevertedHex.length / 2;
-    const txArr = [];
-
-    for (let i = 0; i < bytes; i++) {
-        txArr.push(txByteRevertedHex.substr(i * 2, 2));
-    }
-
-    return txArr.reverse().join('');
-}
+import { checkAddressType } from './btc-address-type';
 export class RawTransaction {
     _tx: any;
     constructor(txType: string = 'p2pkh') {
         if (txType == 'p2pkh') {
-            this._tx = { version: 2, locktime: 0, vins: [], vouts: [] };
+            this._tx = { version: 2, locktime: 0, vins: [], vouts: [], txType: 'p2pkh' };
+        } else if (txType == 'p2sh') {
+            this._tx = { version: 2, locktime: 0, vins: [], vouts: [], txType: 'p2sh' };
+        } else if (txType == 'p2wpkh') {
+            this._tx = { version: 2, flag: 1, locktime: 0, vins: [], vouts: [], txType: 'p2wpkh' };
+        } else if (txType == 'p2wsh') {
+            this._tx = { version: 2, flag: 1, locktime: 0, vins: [], vouts: [], txType: 'p2wsh' };
+        } else {
+            throw new Error('Transaction type is not supported');
         }
     }
-    addInput(address: any, txid: any, vout: any) {
+    /*
+    @param  
+        {string} address - The address to send to.
+        {number} amount - The amount to send.
+        {string} txid - The transaction id of the previous transaction.
+    @description 
+        Adds a vin to the transaction.
+    */
+    addInput(address: string, txid: string, vout: number) {
+        const addressType = checkAddressType(address);
+        console.log(addressType)
+        const hash = new Buffer(txid, 'hex').reverse().toString('hex');
+        const script = generateScript(addressType, fromBase58Check(address).hash).toString('hex');
+
         this._tx.vins.push({
             txid,
             vout,
-            hash: new Buffer(txid, 'hex').reverse().toString('hex'),
+            hash,
             sequence: 0xffffffff,
-            script: p2pkhScript(fromBase58Check(address).hash).toString('hex'),
+            script,
             address,
             scriptSig: '',
+            addressType,
         });
     }
-    addOutput(address: any, amount: any) {
+    /*
+    @param
+        {string} address - The address to send to.
+        {number} amount - The amount to send.
+    @description
+        Adds a vout to the transaction.
+    */
+    addOutput(address: string, amount: string) {
+        const addressType = checkAddressType(address);
+        const script = generateScript(addressType, fromBase58Check(address).hash).toString('hex');
         this._tx.vouts.push({
             address,
-            script: p2pkhScript(fromBase58Check(address).hash).toString('hex'),
+            script,
             value: amount,
+            addressType,
         });
     }
+    /*
+    @description
+        Returns the transaction in JSON format.
+    */
     toJSON() {
         return JSON.parse(JSON.stringify(this._tx));
     }
-    fromHex(hex: string) {
-        let buffer = Buffer.from(hex, 'hex');
-
-        let offset = 0;
-
-        this._tx.version = buffer.readUInt32LE(offset);
-        offset += 4;
-
-        const numberOfVins = Buffer.concat([buffer.slice(offset, offset + 1)], 4).readUInt16LE(0);
-        offset += 1;
-        for (let i = 0; i < numberOfVins; i++) {
-            const hexHash = buffer.slice(offset, offset + 32);
-            const hexTxid = new Buffer(hexHash.length);
-            hexHash.copy(hexTxid);
-            const txid = hexTxid.reverse().toString('hex');
-            const hash = hexHash.toString('hex');
-            offset += 32;
-
-            const vout = buffer.readUInt32LE(offset);
-            offset += 4;
-
-            const scriptSigLen = Buffer.concat([buffer.slice(offset, offset + 1)], 4).readUInt16LE(
-                0
-            );
-            offset += 1;
-
-            const scriptSig = buffer.slice(offset, offset + scriptSigLen).toString('hex');
-            // const scriptSig = '';
-            offset += scriptSigLen;
-
-            const sequence = buffer.readUInt32LE(offset);
-            offset += 4;
-
-            this._tx.vins.push({
-                txid,
-                hash,
-                vout,
-                script: scriptSig,
-                scriptSig,
-                sequence,
-            });
-        }
-
-        const numberOfVouts = Buffer.concat([buffer.slice(offset, offset + 1)], 4).readUInt16LE(0);
-        offset += 1;
-        for (let i = 0; i < numberOfVouts; i++) {
-            const value = readUInt64(buffer, offset);
-            offset += 8;
-
-            const scriptLen = Buffer.concat([buffer.slice(offset, offset + 1)], 4).readUInt16LE(0);
-            offset += 1;
-
-            const script = buffer.slice(offset, offset + scriptLen).toString('hex');
-            offset += scriptLen;
-
-            this._tx.vouts.push({
-                value,
-                script,
-            });
-        }
-
-        this._tx.locktime = buffer.readUInt16LE(offset);
-        offset += 4;
-    }
+    /*
+    @description
+        Returns the transaction in hex format.
+    */
     toHex(): string {
         let buffer = Buffer.alloc(1000);
         let offset = 0;
         //version
         buffer.writeUInt32LE(this._tx.version, offset);
         offset += 4;
+        if (this._tx.txType == 'p2wpkh' || this._tx.txType == 'p2wsh') {
+            buffer.writeUInt16BE(this._tx.flag, offset);
+            offset += 2;
+        }
         //vin len
         buffer.writeUInt16LE(this._tx.vins.length, offset);
         offset += 1;
@@ -167,6 +137,18 @@ export class RawTransaction {
 
         return buffer.toString('hex');
     }
+    /*
+    @param
+        {string} privKey - The private key to sign with.
+    @description
+        Signs the transaction with the private key.
+        For every input, the scriptSig is set to the sign 
+        script generated by the private key and the other 
+        vindices are set to empty. Script field will be 
+        set temporarily to scriptSig.
+        After all inputs are signed, scriptSig field is set 
+        to the scipt field
+    */
     async sign(privKey: any): Promise<any> {
         privKey = Uint8Array.from(Buffer.from(privKey, 'hex'));
         let pubKey = secp256k1.publicKeyCreate(privKey, false);
@@ -174,7 +156,6 @@ export class RawTransaction {
             let sigHash = await this.createSigHash(i, 1);
             let sig = secp256k1.ecdsaSign(sigHash, privKey);
             let encSig = encodeSig(Buffer.from(sig.signature), 1);
-
             this._tx.vins[i].script = p2pkhScriptSig(encSig, Buffer.from(pubKey)).toString('hex');
         }
         for (let i = 0; i < this._tx.vins.length; i++) {
@@ -192,7 +173,7 @@ export class RawTransaction {
         return sha256(sha256(txHexHash));
     }
     deepCopy(tx: RawTransaction) {
-        this._tx = JSON.parse(JSON.stringify(tx._tx));
+        this._tx = tx.toJSON();
     }
     genHashId(): string {
         const tx = new RawTransaction();
@@ -206,25 +187,16 @@ export class RawTransaction {
     }
 }
 
-// async function test() {
-//     let tx = new RawTransaction('p2pkh');
-//     tx.addInput(
-//         'n2UeDaa2pztrvYaBh5kEmc6bGwKM5CufL6',
-//         '59505b56fa2602d58c4d50bf80db2ab94152b96c4892ead79c6a2e0d3ad5d0a4',
-//         0
-//     );
-//     tx.addOutput('n2UeDaa2pztrvYaBh5kEmc6bGwKM5CufL6', '30000');
-//     await tx.sign('472778e9ff4521c485de10c739d32e760952c19d4669ac7128cc23feca28f4f4');
-//     console.log(tx.toHex());
+async function test() {
+    let tx = new RawTransaction('p2wpkh');
+    tx.addInput(
+        'n2UeDaa2pztrvYaBh5kEmc6bGwKM5CufL6',
+        '59505b56fa2602d58c4d50bf80db2ab94152b96c4892ead79c6a2e0d3ad5d0a4',
+        0
+    );
+    tx.addOutput('n2UeDaa2pztrvYaBh5kEmc6bGwKM5CufL6', '30000');
+    await tx.sign('472778e9ff4521c485de10c739d32e760952c19d4669ac7128cc23feca28f4f4');
+    console.log(tx.toHex());
+}
 
-//     let tx1 = new RawTransaction('p2pkh');
-//     tx1.fromhex(
-//         '0200000001a4d0d53a0d2e6a9cd7ea92486cb95241b92adb80bf504d8cd50226fa565b5059000000008a473044022017c28c75b2e3fc0370fc44554ab475ed9edca473112a7fed2cd58cf17595054102207ed7ff11e417a1994428832692fd1eae2b498921d80f1aaa4fe52b7407232f3a014104633f9eb94b0e4fda4e78fd0e6e021270ad75329b8b2a35c9ee61cad2a3df9bc2d9fe0907eb260bda7a1fe44171ea0da297e03ca8b5a680c245af50d0a08ee0a7ffffffff0130750000000000001976a914e5eab830d1416b52358351f5a30c80d3f91ab12b88ac00000000'
-//     );
-//     console.log(tx.genHashId());
-//     console.log(tx1.genHashId());
-//     console.log(tx1.toJSON());
-// }
-
-// test();
-
+test();

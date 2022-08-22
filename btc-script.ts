@@ -1,6 +1,6 @@
 import * as crypto from 'crypto';
 import bs58check from 'bs58check';
-import OPS from './btc-ops-mapping.json';
+import OPS from './btc-ops-mapping';
 import BN from 'bn.js';
 let bip66 = require('bip66');
 
@@ -16,19 +16,6 @@ function ripemd160(data: any) {
     let hash = crypto.createHash('ripemd160');
     hash.update(data);
     return hash.digest();
-}
-function p2pkhScript(hash160PubKey: any) {
-    return compileScript([
-        OPS.OP_DUP,
-        OPS.OP_HASH160,
-        hash160PubKey,
-        OPS.OP_EQUALVERIFY,
-        OPS.OP_CHECKSIG,
-    ]);
-}
-
-function p2pkhScriptSig(sig: any, pubKey: any) {
-    return compileScript([sig, pubKey]);
 }
 
 function fromBase58Check(address: string) {
@@ -95,16 +82,75 @@ function readUInt64(buff: Buffer, offset: number) {
     return new BN(word0).add(new BN(word1).mul(new BN(100000000))).toString(10);
 }
 
+function p2pkhScript(hash160PubKey: any) {
+    return compileScript([
+        OPS.OP_DUP,
+        OPS.OP_HASH160,
+        hash160PubKey,
+        OPS.OP_EQUALVERIFY,
+        OPS.OP_CHECKSIG,
+    ]);
+}
+
+function p2shScript(hash160Script: any) {
+    return compileScript([OPS.OP_HASH160, hash160Script, OPS.OP_EQUAL]);
+}
+
+function p2wpkhScript(hash160PubKey: any) {
+    return compileScript([
+        OPS.OP_0,
+        hash160PubKey,
+    ]);
+}
+
+function p2wshScript(hash256Script: any) {
+    return compileScript([
+        OPS.OP_0,
+        hash256Script,
+    ]);
+}
+
+
+function generateScript(type: string, data: any) {
+    switch (type) {
+        case 'p2pkh':
+            return p2pkhScript(data);
+        case 'p2sh':
+            return p2shScript(data);
+        case 'p2wpkh':
+            return p2wpkhScript(data);
+        case 'p2wsh':
+            return p2wshScript(data);
+        default:
+            throw new Error('Unsupported script type');
+    }
+}
+
+function p2pkhScriptSig(sig: any, pubKey: any) {
+    return compileScript([sig, pubKey]);
+}
+
+function p2shScriptSig(sig: any, pubKey: any) {
+    return compileScript([OPS.OP_0, sig, pubKey]);
+}
+
+function p2wpkhScriptSignature(sig: any, pubKey: any) {
+    return compileScript([sig, pubKey]);
+}
+
+function p2wshScriptSignature(sig: any, pubKey: any) {
+    return compileScript([sig, pubKey]);
+}
+
 export {
     OPS,
-    p2pkhScript,
+    p2pkhScriptSig,
     fromBase58Check,
     encodeSig,
     sha256,
     ripemd160,
-    p2pkhScriptSig,
     compileScript,
     hash160,
     readUInt64,
+    generateScript
 };
-
