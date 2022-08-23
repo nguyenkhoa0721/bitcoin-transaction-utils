@@ -23,6 +23,7 @@
     "@types/secp256k1": "^4.0.3"
   },
   "dependencies": {
+    "bech32": "^2.0.0",
     "bip66": "^1.1.5",
     "bs58check": "^2.1.2",
     "crypto": "^1.0.1",

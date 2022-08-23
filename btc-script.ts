@@ -1,5 +1,6 @@
 import * as crypto from 'crypto';
 import bs58check from 'bs58check';
+import { bech32 } from 'bech32';
 import OPS from './btc-ops-mapping';
 import BN from 'bn.js';
 let bip66 = require('bip66');
@@ -24,7 +25,10 @@ function fromBase58Check(address: string) {
     let hash = payload.slice(1);
     return { version, hash };
 }
-
+function bach32Decode(address: string) {
+    let words = bech32.decode(address).words;
+    words = words.slice(1)
+}
 // @description: With var has type buffer, func will add length of buffer before
 function compileScript(chunks: any[]) {
     let bufferSize = 0;
@@ -97,19 +101,12 @@ function p2shScript(hash160Script: any) {
 }
 
 function p2wpkhScript(hash160PubKey: any) {
-    return compileScript([
-        OPS.OP_0,
-        hash160PubKey,
-    ]);
+    return compileScript([OPS.OP_0, hash160PubKey]);
 }
 
 function p2wshScript(hash256Script: any) {
-    return compileScript([
-        OPS.OP_0,
-        hash256Script,
-    ]);
+    return compileScript([OPS.OP_0, hash256Script]);
 }
-
 
 function generateScript(type: string, data: any) {
     switch (type) {
@@ -134,17 +131,18 @@ function p2shScriptSig(sig: any, pubKey: any) {
     return compileScript([OPS.OP_0, sig, pubKey]);
 }
 
-function p2wpkhScriptSignature(sig: any, pubKey: any) {
-    return compileScript([sig, pubKey]);
+function p2wpkhScriptSig(sig: any, pubKey: any) {
+    return compileScript([pubKey, sig]);
 }
 
-function p2wshScriptSignature(sig: any, pubKey: any) {
-    return compileScript([sig, pubKey]);
+function p2wshScriptSig(sig: any, pubKey: any) {
+    return compileScript([pubKey, sig]);
 }
 
 export {
     OPS,
     p2pkhScriptSig,
+    p2wpkhScriptSig,
     fromBase58Check,
     encodeSig,
     sha256,
@@ -152,5 +150,5 @@ export {
     compileScript,
     hash160,
     readUInt64,
-    generateScript
+    generateScript,
 };
