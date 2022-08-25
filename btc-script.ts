@@ -20,7 +20,6 @@ function ripemd160(data: any) {
 }
 function binaryStringToBuffer(binary: string) {
     const groups = binary.match(/[01]{8}/g);
-    console.log(groups);
     let numbers: number[] = [];
     if (groups) numbers = groups.map((binary) => parseInt(binary, 2));
     return Buffer.from(new Uint8Array(numbers).buffer);
@@ -102,8 +101,7 @@ function readUInt64(buff: Buffer, offset: number) {
     return new BN(word0).add(new BN(word1).mul(new BN(100000000))).toString(10);
 }
 
-function p2pkhScript(address: string) {
-    const hash160PubKey = fromBase58Check(address).hash;
+function p2pkhScript(hash160PubKey: Buffer) {
     return compileScript([
         OPS.OP_DUP,
         OPS.OP_HASH160,
@@ -113,34 +111,34 @@ function p2pkhScript(address: string) {
     ]);
 }
 
-function p2shScript(address: string) {
-    //@Todo: generate hash160Script
-    const hash160Script = Buffer.alloc(0);
+function p2shScript(hash160Script: Buffer) {
     return compileScript([OPS.OP_HASH160, hash160Script, OPS.OP_EQUAL]);
 }
 
-function p2wpkhScript(address: string) {
-    const hash160PubKey = bach32Decode(address);
-    console.log(hash160PubKey)
+function p2wpkhScript(hash160PubKey: Buffer) {
     return compileScript([OPS.OP_0, hash160PubKey]);
 }
 
-function p2wshScript(address: string) {
+function p2wshScript(hash160PubKey: Buffer) {
     //@Todo: generate hash160Script
-    const hash160PubKey = Buffer.alloc(0);
     return compileScript([OPS.OP_0, hash160PubKey]);
 }
 
 function generateScript(type: string, address: string) {
+    let hash160PubKey: Buffer;
     switch (type) {
         case 'p2pkh':
-            return p2pkhScript(address);
+            hash160PubKey = fromBase58Check(address).hash;
+            return p2pkhScript(hash160PubKey);
         case 'p2sh':
-            return p2shScript(address);
+            hash160PubKey = fromBase58Check(address).hash;
+            return p2shScript(hash160PubKey);
         case 'p2wpkh':
-            return p2wpkhScript(address);
+            hash160PubKey = bach32Decode(address);
+            return p2wpkhScript(hash160PubKey);
         case 'p2wsh':
-            return p2wshScript(address);
+            hash160PubKey = Buffer.alloc(0);
+            return p2wshScript(hash160PubKey);
         default:
             throw new Error('Unsupported script type');
     }
@@ -175,4 +173,5 @@ export {
     readUInt64,
     generateScript,
     bach32Decode,
+    p2pkhScript,
 };
