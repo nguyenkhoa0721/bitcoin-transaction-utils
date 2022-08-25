@@ -22,9 +22,9 @@ export class RawTransaction {
     constructor(isSegwit: boolean = false) {
         this._isSegwit = isSegwit;
         if (!this._isSegwit) {
-            this._tx = { version: 2, locktime: 0, vins: [], vouts: [], txType: 'p2pkh' };
+            this._tx = { version: 2, locktime: 0, vins: [], vouts: [] };
         } else if (this._isSegwit) {
-            this._tx = { version: 2, flag: 1, locktime: 0, vins: [], vouts: [], txType: 'p2wpkh' };
+            this._tx = { version: 2, flag: 1, locktime: 0, vins: [], vouts: [] };
         } else {
             throw new Error('Transaction type is not supported');
         }
@@ -84,7 +84,7 @@ export class RawTransaction {
     @description
         Returns the transaction in hex format.
     */
-    toHex(option: any): string {
+    toHex(): string {
         let buffer = Buffer.alloc(1000);
         let offset = 0;
         let numberOfWitnesses = 0;
@@ -134,14 +134,20 @@ export class RawTransaction {
         }
         //witnesses
         if (this._isSegwit) {
-            buffer.writeUInt16LE(this._tx.vins.length * 2, offset);
-            offset += 1;
             for (let i in this._tx.vins) {
                 let input = this._tx.vins[i];
-                buffer.write(input.witness, offset, input.witness.length / 2, 'hex');
-                offset += input.witness.length / 2;
+                if (input.witness.length > 0) {
+                    buffer.writeUInt16LE(2, offset);
+                    offset += 1;
+                    buffer.write(input.witness, offset, input.witness.length / 2, 'hex');
+                    offset += input.witness.length / 2;
+                } else {
+                    buffer.writeUInt16LE(0, offset);
+                    offset += 1;
+                }
             }
         }
+
         //locktime
         buffer.writeUInt16LE(this._tx.locktime, offset);
         offset += 4;
@@ -159,7 +165,7 @@ export class RawTransaction {
             if (i == vindex) signTx._tx.vins[i].scriptSig = signTx._tx.vins[i].script;
             else signTx._tx.vins[i].scriptSig = '';
         }
-        return signTx.toHex(signTx._tx.vins[vindex].addressType);
+        return signTx.toHex();
     }
     toSegwitSignHex(vindex: number): string {
         const signTx = new RawTransaction();
@@ -191,7 +197,6 @@ export class RawTransaction {
             scriptBuffer = Buffer.alloc(script.length + 1); //script len + script
             scriptBuffer.writeUInt16LE(script.length, 0);
             scriptBuffer = Buffer.concat([scriptBuffer.slice(0, 1), script]);
-            console.log(scriptBuffer.toString('hex'));
         } else {
             throw new Error(
                 'Generate sign hash: Unsupported address type for creating script code'
@@ -304,7 +309,6 @@ export class RawTransaction {
         }
         let txHexHash = Buffer.alloc(txHex.length + 4, txHex);
         txHexHash.writeUInt32LE(hashType, txHexHash.length - 4);
-        console.log('txHex', txHexHash.toString('hex'));
         return sha256(sha256(txHexHash));
     }
     deepCopy(tx: RawTransaction) {
@@ -317,37 +321,7 @@ export class RawTransaction {
             tx._tx.vins[i].scriptSig = '';
         }
 
-        const hash = hash160(tx.toHex({}));
+        const hash = hash160(tx.toHex());
         return hash.toString('hex');
     }
 }
-
-async function test() {
-    const hash160Script = fromBase58Check('2N4yEhDwic9Tm4BRN9EP1hnSu9f6cWJrU31').hash;
-    console.log(hash160Script);
-    let tx = new RawTransaction(true);
-    tx.addInput(
-        'mxFEHeSxxKjy9YcmFzXNpuE3FFJyby56jA',
-        'd1a92ad68a031c5324981aa920152bd16975686905db41e3fc9d51c7ff4a20ed',
-        1
-    );
-    tx.addInput(
-        'tb1qt9xzu0df95vsfal8eptzyruv4e00k4ty6d8zhh',
-        'b7203bd59b3c26c65699251939e1e6353f5f09952156c5b9c01bbe9f5372b89c',
-        1,
-        '9300'
-    );
-    tx.addInput(
-        '2N4yEhDwic9Tm4BRN9EP1hnSu9f6cWJrU31',
-        '04d984cdcf728975c173c45c49a242cedee2da5dc200b2f83ca6a98aecf11280',
-        1
-    );
-    tx.addOutput('tb1qeds7u3tgpqkttxkzdwukaj8muqgf5nqq6w05ak', '16089269');
-    await tx.sign('DBFF11E0F2F1AA5089465A591C5E523D1CA92668DED893155CDFABC94CC14E30', [0]);
-    await tx.sign('26F85CE8B2C635AD92F6148E4443FE415F512F3F29F44AB0E2CBDA819295BBD5', [1]);
-    await tx.sign('D9172189D7700FDFB4B6A5C4A83990EAEAFE455441B7D43FF85678EB93AC2713', [2]);
-    console.log(tx.toJSON());
-    // console.log(tx.toHex());
-}
-
-test();
