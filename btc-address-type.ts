@@ -6,6 +6,7 @@ const mapping = [
     { s: 'tb1', type: 'p2wpkh', chain: 'testnet' },
     { s: 'm', type: 'p2pkh', chain: 'testnet' },
     { s: 'n', type: 'p2pkh', chain: 'testnet' },
+    { s: '2', type: 'p2sh', chain: 'testnet' },
 ];
 
 export const checkAddressType = (address: string) => {

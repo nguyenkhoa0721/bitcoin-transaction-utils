@@ -1,5 +1,6 @@
 import * as crypto from 'crypto';
 import bs58check from 'bs58check';
+import { bech32 } from 'bech32';
 import OPS from './btc-ops-mapping';
 import BN from 'bn.js';
 let bip66 = require('bip66');
@@ -17,12 +18,30 @@ function ripemd160(data: any) {
     hash.update(data);
     return hash.digest();
 }
+function binaryStringToBuffer(binary: string) {
+    const groups = binary.match(/[01]{8}/g);
+    let numbers: number[] = [];
+    if (groups) numbers = groups.map((binary) => parseInt(binary, 2));
+    return Buffer.from(new Uint8Array(numbers).buffer);
+}
 
 function fromBase58Check(address: string) {
     let payload = bs58check.decode(address);
     let version = payload.readUInt8(0);
     let hash = payload.slice(1);
     return { version, hash };
+}
+function bach32Decode(address: string) {
+    let words = bech32.decode(address).words;
+    words = words.slice(1);
+
+    let bin = '';
+    for (let i in words) {
+        const tmp = words[i].toString(2);
+        bin += '0'.repeat(5 - tmp.length) + tmp;
+    }
+    const buf = Buffer.from(bin, 'binary');
+    return binaryStringToBuffer(bin);
 }
 
 // @description: With var has type buffer, func will add length of buffer before
@@ -82,7 +101,7 @@ function readUInt64(buff: Buffer, offset: number) {
     return new BN(word0).add(new BN(word1).mul(new BN(100000000))).toString(10);
 }
 
-function p2pkhScript(hash160PubKey: any) {
+function p2pkhScript(hash160PubKey: Buffer) {
     return compileScript([
         OPS.OP_DUP,
         OPS.OP_HASH160,
@@ -92,35 +111,34 @@ function p2pkhScript(hash160PubKey: any) {
     ]);
 }
 
-function p2shScript(hash160Script: any) {
+function p2shScript(hash160Script: Buffer) {
     return compileScript([OPS.OP_HASH160, hash160Script, OPS.OP_EQUAL]);
 }
 
-function p2wpkhScript(hash160PubKey: any) {
-    return compileScript([
-        OPS.OP_0,
-        hash160PubKey,
-    ]);
+function p2wpkhScript(hash160PubKey: Buffer) {
+    return compileScript([OPS.OP_0, hash160PubKey]);
 }
 
-function p2wshScript(hash256Script: any) {
-    return compileScript([
-        OPS.OP_0,
-        hash256Script,
-    ]);
+function p2wshScript(hash160PubKey: Buffer) {
+    //@Todo: generate hash160Script
+    return compileScript([OPS.OP_0, hash160PubKey]);
 }
 
-
-function generateScript(type: string, data: any) {
+function generateScript(type: string, address: string) {
+    let hash160PubKey: Buffer;
     switch (type) {
         case 'p2pkh':
-            return p2pkhScript(data);
+            hash160PubKey = fromBase58Check(address).hash;
+            return p2pkhScript(hash160PubKey);
         case 'p2sh':
-            return p2shScript(data);
+            hash160PubKey = fromBase58Check(address).hash;
+            return p2shScript(hash160PubKey);
         case 'p2wpkh':
-            return p2wpkhScript(data);
+            hash160PubKey = bach32Decode(address);
+            return p2wpkhScript(hash160PubKey);
         case 'p2wsh':
-            return p2wshScript(data);
+            hash160PubKey = Buffer.alloc(0);
+            return p2wshScript(hash160PubKey);
         default:
             throw new Error('Unsupported script type');
     }
@@ -134,17 +152,18 @@ function p2shScriptSig(sig: any, pubKey: any) {
     return compileScript([OPS.OP_0, sig, pubKey]);
 }
 
-function p2wpkhScriptSignature(sig: any, pubKey: any) {
-    return compileScript([sig, pubKey]);
+function p2wpkhScriptSig(sig: any, pubKey: any) {
+    return compileScript([pubKey, sig]);
 }
 
-function p2wshScriptSignature(sig: any, pubKey: any) {
-    return compileScript([sig, pubKey]);
+function p2wshScriptSig(sig: any, pubKey: any) {
+    return compileScript([pubKey, sig]);
 }
 
 export {
     OPS,
     p2pkhScriptSig,
+    p2wpkhScriptSig,
     fromBase58Check,
     encodeSig,
     sha256,
@@ -152,5 +171,7 @@ export {
     compileScript,
     hash160,
     readUInt64,
-    generateScript
+    generateScript,
+    bach32Decode,
+    p2pkhScript,
 };
