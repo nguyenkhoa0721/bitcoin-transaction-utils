@@ -311,7 +311,112 @@ export class RawTransaction {
         txHexHash.writeUInt32LE(hashType, txHexHash.length - 4);
         return sha256(sha256(txHexHash));
     }
+    fromHex(hex: string) {
+        let buffer = Buffer.from(hex, 'hex');
+
+        let offset = 0;
+
+        this._tx.version = buffer.readUInt32LE(offset);
+        offset += 4;
+
+        if (this._isSegwit) {
+            this._tx.flag = Buffer.concat([buffer.slice(offset + 1, offset + 2)], 4).readUInt16LE(
+                0
+            );
+            offset += 2;
+        }
+
+        const numberOfVins = Buffer.concat([buffer.slice(offset, offset + 1)], 4).readUInt16LE(0);
+        offset += 1;
+        for (let i = 0; i < numberOfVins; i++) {
+            const hexHash = buffer.slice(offset, offset + 32);
+            const hexTxid = new Buffer(hexHash.length);
+            hexHash.copy(hexTxid);
+            const txid = hexTxid.reverse().toString('hex');
+            const hash = hexHash.toString('hex');
+            offset += 32;
+
+            const vout = buffer.readUInt32LE(offset);
+            offset += 4;
+
+            const scriptSigLen = Buffer.concat([buffer.slice(offset, offset + 1)], 4).readUInt16LE(
+                0
+            );
+            offset += 1;
+
+            // const scriptSig = buffer.slice(offset, offset + scriptSigLen).toString('hex');
+            const scriptSig = '';
+            offset += scriptSigLen;
+
+            const sequence = buffer.readUInt32LE(offset);
+            offset += 4;
+            this._tx.vins.push({
+                txid,
+                hash,
+                vout,
+                scriptSig,
+                sequence,
+            });
+        }
+
+        const numberOfVouts = Buffer.concat([buffer.slice(offset, offset + 1)], 4).readUInt16LE(0);
+        offset += 1;
+        for (let i = 0; i < numberOfVouts; i++) {
+            const value = readUInt64(buffer, offset);
+            offset += 8;
+
+            const scriptLen = Buffer.concat([buffer.slice(offset, offset + 1)], 4).readUInt16LE(0);
+            offset += 1;
+
+            const script = buffer.slice(offset, offset + scriptLen).toString('hex');
+            offset += scriptLen;
+
+            this._tx.vouts.push({
+                value,
+                script,
+            });
+        }
+
+        if (this._isSegwit) {
+            for (let i in this._tx.vins) {
+                const numberOfWitness = Buffer.concat(
+                    [buffer.slice(offset, offset + 1)],
+                    4
+                ).readUInt16LE(0);
+                offset += 1;
+
+                if (numberOfWitness == 0) {
+                    this._tx.vins[i].witness = '';
+                } else {
+                    const witnessSigLen = Buffer.concat(
+                        [buffer.slice(offset, offset + 1)],
+                        4
+                    ).readUInt16LE(0);
+                    this._tx.vins[i].witness = buffer.slice(offset, offset + 1).toString('hex');
+                    offset += 1;
+                    this._tx.vins[i].witness += buffer
+                        .slice(offset, offset + witnessSigLen)
+                        .toString('hex');
+                    offset += witnessSigLen;
+
+                    const witnessPubLen = Buffer.concat(
+                        [buffer.slice(offset, offset + 1)],
+                        4
+                    ).readUInt16LE(0);
+                    this._tx.vins[i].witness += buffer.slice(offset, offset + 1).toString('hex');
+                    offset += 1;
+                    this._tx.vins[i].witness += buffer
+                        .slice(offset, offset + witnessPubLen)
+                        .toString('hex');
+                    offset += witnessPubLen;
+                }
+            }
+        }
+        this._tx.locktime = buffer.readUInt16LE(offset);
+        offset += 4;
+    }
     deepCopy(tx: RawTransaction) {
+        this._isSegwit = tx._isSegwit;
         this._tx = tx.toJSON();
     }
     genHashId(): string {
@@ -319,9 +424,10 @@ export class RawTransaction {
         tx.deepCopy(this);
         for (let i in tx._tx.vins) {
             tx._tx.vins[i].scriptSig = '';
+            tx._tx.vins[i].witness = '';
         }
-
-        const hash = hash160(tx.toHex());
+        const hash = hash160(Buffer.from(tx.toHex(), 'hex'));
+        // const hash = sha256(Buffer.from(tx.toHex(), 'hex'));
         return hash.toString('hex');
     }
 }

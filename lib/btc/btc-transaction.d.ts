@@ -10,6 +10,7 @@ export declare class RawTransaction {
     toSegwitSignHex(vindex: number): string;
     sign(privKey: any, inputs: number[]): Promise<any>;
     createSigHash(vindex: number, hashType: number): Promise<any>;
+    fromHex(hex: string): void;
     deepCopy(tx: RawTransaction): void;
     genHashId(): string;
 }
