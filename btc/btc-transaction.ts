@@ -18,8 +18,8 @@ import { checkAddressType } from './btc-address-type';
 import { off } from 'process';
 export class RawTransaction {
     _tx: any;
-    _isSegwit: boolean = false;
-    constructor(isSegwit: boolean = false) {
+    _isSegwit: boolean = true;
+    constructor(isSegwit: boolean = true) {
         this._isSegwit = isSegwit;
         if (!this._isSegwit) {
             this._tx = { version: 2, locktime: 0, vins: [], vouts: [] };
