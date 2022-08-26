@@ -9,14 +9,14 @@
     },
     "repository": {
         "type": "git",
-        "url": "git+https://github.com/nguyenkhoa0721/btc-create-raw-transaction.git"
+        "url": "git+https://github.com/nguyenkhoa0721/m25-transaction-utils.git"
     },
     "author": "",
     "license": "ISC",
     "bugs": {
-        "url": "https://github.com/nguyenkhoa0721/btc-create-raw-transaction/issues"
+        "url": "https://github.com/nguyenkhoa0721/m25-transaction-utils/issues"
     },
-    "homepage": "https://github.com/nguyenkhoa0721/btc-create-raw-transaction#readme",
+    "homepage": "https://github.com/nguyenkhoa0721/m25-transaction-utils#readme",
     "devDependencies": {
         "@types/bn.js": "^5.1.0",
         "@types/bs58check": "^2.1.0",
