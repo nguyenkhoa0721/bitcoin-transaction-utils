@@ -1,6 +1,6 @@
 import BN from 'bn.js';
 import secp256k1 from 'secp256k1';
-
+import OPS from './btc-ops-mapping';
 import {
     readUInt64,
     p2pkhScriptSig,
@@ -12,6 +12,9 @@ import {
     generateScript,
     bach32Decode,
     p2pkhScript,
+    compileScript,
+    p2shScriptSig,
+    vi2h,
 } from './btc-script';
 
 import { checkAddressType } from './btc-address-type';
@@ -108,8 +111,9 @@ export class RawTransaction {
             buffer.writeUInt32LE(input.vout, offset);
             offset += 4;
             //script len & script
-            buffer.writeUInt16LE(input.scriptSig.length / 2, offset);
-            offset += 1;
+            let scriptSigLen = vi2h(input.scriptSig.length / 2);
+            buffer.write(scriptSigLen.toString('hex'), offset, scriptSigLen.length, 'hex');
+            offset += scriptSigLen.length;
             if (input.scriptSig.length > 0) {
                 buffer.write(input.scriptSig, offset, input.scriptSig.length / 2, 'hex');
                 offset += input.scriptSig.length / 2;
@@ -127,8 +131,9 @@ export class RawTransaction {
             buffer.write(BNValue.toBuffer('le', 8).toString('hex'), offset, 8, 'hex');
             offset += 8;
             //script len & script
-            buffer.writeUInt16LE(output.script.length / 2, offset);
-            offset += 1;
+            let scriptLen = vi2h(output.script.length / 2);
+            buffer.write(scriptLen.toString('hex'), offset, scriptLen.length, 'hex');
+            offset += scriptLen.length;
             buffer.write(output.script, offset, output.script.length / 2, 'hex');
             offset += output.script.length / 2;
         }
@@ -162,7 +167,9 @@ export class RawTransaction {
         const signTx = new RawTransaction();
         signTx.deepCopy(this);
         for (let i = 0; i < signTx._tx.vins.length; i++) {
-            if (i == vindex) signTx._tx.vins[i].scriptSig = signTx._tx.vins[i].script;
+            if (i == vindex)
+                signTx._tx.vins[i].scriptSig =
+                    signTx._tx.vins[i].redeemScript || signTx._tx.vins[i].script;
             else signTx._tx.vins[i].scriptSig = '';
         }
         return signTx.toHex();
@@ -281,11 +288,12 @@ export class RawTransaction {
         privKey = Uint8Array.from(Buffer.from(privKey, 'hex'));
         let pubKey = secp256k1.publicKeyCreate(privKey, false);
         let compressedPubKey = secp256k1.publicKeyConvert(pubKey, true);
-
+        let signatures = [];
         for (let i of inputs) {
             let sigHash = await this.createSigHash(i, 1);
             let sig = secp256k1.ecdsaSign(sigHash, privKey);
             let encSig = encodeSig(Buffer.from(sig.signature), 1);
+            signatures.push(encSig);
             if (this._tx.vins[i].addressType == 'p2wpkh') {
                 this._tx.vins[i].witness = p2pkhScriptSig(
                     encSig,
@@ -297,10 +305,15 @@ export class RawTransaction {
                 );
             }
         }
+        return signatures;
     }
-    async createSigHash(vindex: number, hashType: number): Promise<any> {
+    async createSigHash(
+        vindex: number,
+        hashType: number,
+        redeemScript: Buffer = null
+    ): Promise<any> {
         let txHex: Buffer;
-        if (this._tx.vins[vindex].addressType == 'p2pkh') {
+        if (['p2pkh', 'p2sh'].includes(this._tx.vins[vindex].addressType)) {
             txHex = Buffer.from(this.toSignHex(vindex), 'hex');
         } else if (this._tx.vins[vindex].addressType == 'p2wpkh') {
             txHex = Buffer.from(this.toSegwitSignHex(vindex), 'hex');
@@ -429,5 +442,52 @@ export class RawTransaction {
         const hash = hash160(Buffer.from(tx.toHex(), 'hex'));
         // const hash = sha256(Buffer.from(tx.toHex(), 'hex'));
         return hash.toString('hex');
+    }
+}
+
+export class MultiSig2to2Transaction extends RawTransaction {
+    _pubKeys: Array<Buffer> = [];
+    constructor(pubKeys: Array<string>, isSegwit: boolean = false) {
+        if (pubKeys.length > 3) {
+            throw 'MultiSig2to3Transaction: Too many pubkeys';
+        }
+        super(isSegwit);
+        // pubKeys.sort();
+        for (let pubKey of pubKeys) {
+            this._pubKeys.push(Buffer.from(pubKey, 'hex'));
+        }
+    }
+    addMultiSigInput(
+        address: string,
+        txid: string,
+        vout: number,
+        signatures: Array<string>,
+        amount?: string
+    ): void {
+        super.addInput(address, txid, vout, amount);
+        this._tx.vins[this._tx.vins.length - 1].signatures = signatures;
+        this._tx.vins[this._tx.vins.length - 1].redeemScript =
+            this.generateRedeemScript().toString('hex');
+    }
+    async sign(privKey: any, inputs: number[]): Promise<any> {
+        let signatures = await super.sign(privKey, inputs);
+        for (let i in inputs) {
+            let idx = Number(i);
+            this._tx.vins[inputs[idx]].signatures.push(signatures[idx]);
+        }
+    }
+    toHex(): string {
+        for (let i in this._tx.vins) {
+            this._tx.vins[i].scriptSig = this.multiSigScriptSig(
+                this._tx.vins[i].signatures
+            ).toString('hex');
+        }
+        return super.toHex();
+    }
+    multiSigScriptSig(sigs: Array<Buffer>): Buffer {
+        return compileScript([OPS.OP_0, ...sigs, OPS.OP_PUSHDATA1, this.generateRedeemScript()]);
+    }
+    generateRedeemScript(): Buffer {
+        return compileScript([OPS.OP_2, ...this._pubKeys, OPS.OP_2, OPS.OP_CHECKMULTISIG]);
     }
 }

@@ -1,5 +1,6 @@
 import { decode } from 'bs58check';
-import { RawTransaction } from './btc-transaction';
+import { RawTransaction, MultiSig2to2Transaction } from './btc-transaction';
+import { vi2h } from './btc-script';
 async function test() {
     let tx = new RawTransaction(true);
     tx.addInput(
@@ -20,9 +21,9 @@ async function test() {
     // console.log(tx.toJSON());
     // console.log(tx.toHex());
     await tx.sign('f2bfcdab00c7bea417d47c5c05cebcce0fc8c37f3221725ed03bb2e4797cca74', [0]);
-    // await tx.sign('d1cb728032819c1be7158332930dec1e05e058220ae2659ccfc6f24b10cec077', [1]);
+    await tx.sign('d1cb728032819c1be7158332930dec1e05e058220ae2659ccfc6f24b10cec077', [1]);
 
-    // console.log(tx.toHex());
+    console.log(tx.toHex());
 
     let decodeTx = new RawTransaction();
     decodeTx.fromHex(
@@ -32,4 +33,27 @@ async function test() {
     // console.log(decodeTx.toJSON());
     console.log(decodeTx.genHashId());
 }
-test();
+// test();
+async function multiSigTest() {
+    const tx = new MultiSig2to2Transaction(
+        [
+            '0416d99e3d63a5f9793822232c6393e0fb50945b0c07946e20c7236cc0ce6ed786044083b9af68fecadfe45a03517e6730fdced867deee221ef7175be162706dd5',
+            '04089ae61e4014c9588cae4bd0a6aef3d44b1be674a1aa27cf9d8b50b1bb422026da4dc276e11823f531f84842d4b990380cc600ad99fe84fe2f2bbd927d98fe36',
+        ],
+        false
+    );
+    tx.addMultiSigInput(
+        '2NERCTjns9kMGUrksHZagpKwb5VLiW4PRRv',
+        'd09ea67f8c62629a0dbaaf9a7864d9a13374d683b30a42b1ac91e422eececa89',
+        0,
+        []
+    );
+    tx.addOutput('2NERCTjns9kMGUrksHZagpKwb5VLiW4PRRv', '60000');
+    await tx.sign('9626d2c1b8a2f2c0a7753a50980f96c8dcb4dddc622716bc50f6e72fe949dd0d', [0]);
+    await tx.sign('c00e2f845866c2f370e2e9648d996e0c022a50f104917e75255dcff034a5cdc9', [0]);
+    console.log(tx.generateRedeemScript().toString('hex'));
+    console.log(tx.toHex());
+    console.dir(tx.toJSON());
+}
+multiSigTest();
+// console.log(vi2h(9).toString('hex'));
