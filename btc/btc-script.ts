@@ -168,15 +168,22 @@ function vi2h(num: number): Buffer {
         hex = n2h(num, 0xfd, 2);
     } else if (num < 0xffffffff) {
         hex = n2h(num, 0xfe, 4);
-    } else {
-        hex = n2h(num, 0xff, 8);
     }
     return hex;
 }
 function n2h(num: number, start: number, len: number): Buffer {
     return Buffer.concat([Buffer.from(start.toString(16), 'hex'), new BN(num).toBuffer('le', len)]);
 }
-
+function h2vi(buffer: Buffer, offset: number): [number, number] {
+    let num = parseInt(buffer.subarray(0, 1).toString('hex'), 16);
+    if (num < 0xfd) {
+        return [num, offset + 1];
+    } else if (num < 0xffff) {
+        return [buffer.readUInt16LE(1), offset + 3];
+    } else if (num < 0xffffffff) {
+        return [buffer.readUInt32LE(1), offset + 6];
+    }
+}
 export {
     OPS,
     p2pkhScriptSig,
@@ -193,4 +200,5 @@ export {
     p2pkhScript,
     p2shScriptSig,
     vi2h,
+    h2vi,
 };

@@ -15,6 +15,7 @@ import {
     compileScript,
     p2shScriptSig,
     vi2h,
+    h2vi,
 } from './btc-script';
 
 import { checkAddressType } from './btc-address-type';
@@ -352,11 +353,8 @@ export class RawTransaction {
             const vout = buffer.readUInt32LE(offset);
             offset += 4;
 
-            const scriptSigLen = Buffer.concat([buffer.slice(offset, offset + 1)], 4).readUInt16LE(
-                0
-            );
-            offset += 1;
-
+            let scriptSigLen: number;
+            [scriptSigLen, offset] = h2vi(buffer.slice(offset), offset);
             // const scriptSig = buffer.slice(offset, offset + scriptSigLen).toString('hex');
             const scriptSig = '';
             offset += scriptSigLen;
@@ -378,8 +376,8 @@ export class RawTransaction {
             const value = readUInt64(buffer, offset);
             offset += 8;
 
-            const scriptLen = Buffer.concat([buffer.slice(offset, offset + 1)], 4).readUInt16LE(0);
-            offset += 1;
+            let scriptLen: number;
+            [scriptLen, offset] = h2vi(buffer.slice(offset), offset);
 
             const script = buffer.slice(offset, offset + scriptLen).toString('hex');
             offset += scriptLen;
@@ -445,14 +443,21 @@ export class RawTransaction {
     }
 }
 
-export class MultiSig2to2Transaction extends RawTransaction {
+export class MultiSigTransaction extends RawTransaction {
     _pubKeys: Array<Buffer> = [];
-    constructor(pubKeys: Array<string>, isSegwit: boolean = false) {
-        if (pubKeys.length > 3) {
-            throw 'MultiSig2to3Transaction: Too many pubkeys';
+    _n: number = 2;
+    _m: number = 2;
+    constructor(n: number, m: number, pubKeys: Array<string>, isSegwit: boolean = false) {
+        if (pubKeys.length != m) {
+            throw 'MultiSigTransaction: Too many or not enough pubkeys';
+        }
+        if (1 > n || n > m || m > 16 || m < 2) {
+            throw 'MultiSigTransaction: it should 1 <= n <= m <= 16 and 2 <= m';
         }
         super(isSegwit);
-        // pubKeys.sort();
+        this._n = n;
+        this._m = m;
+        pubKeys.sort().reverse();
         for (let pubKey of pubKeys) {
             this._pubKeys.push(Buffer.from(pubKey, 'hex'));
         }
@@ -474,20 +479,27 @@ export class MultiSig2to2Transaction extends RawTransaction {
         for (let i in inputs) {
             let idx = Number(i);
             this._tx.vins[inputs[idx]].signatures.push(signatures[idx]);
-        }
-    }
-    toHex(): string {
-        for (let i in this._tx.vins) {
-            this._tx.vins[i].scriptSig = this.multiSigScriptSig(
-                this._tx.vins[i].signatures
+            this._tx.vins[inputs[idx]].scriptSig = this.multiSigScriptSig(
+                this._tx.vins[inputs[idx]].signatures
             ).toString('hex');
         }
-        return super.toHex();
     }
     multiSigScriptSig(sigs: Array<Buffer>): Buffer {
-        return compileScript([OPS.OP_0, ...sigs, OPS.OP_PUSHDATA1, this.generateRedeemScript()]);
+        if (this._n > 1)
+            return compileScript([
+                OPS.OP_0,
+                ...sigs,
+                OPS.OP_PUSHDATA1,
+                this.generateRedeemScript(),
+            ]);
+        else return compileScript([OPS.OP_0, ...sigs, this.generateRedeemScript()]);
     }
     generateRedeemScript(): Buffer {
-        return compileScript([OPS.OP_2, ...this._pubKeys, OPS.OP_2, OPS.OP_CHECKMULTISIG]);
+        return compileScript([
+            OPS[`OP_${this._n}`],
+            ...this._pubKeys,
+            OPS[`OP_${this._m}`],
+            OPS.OP_CHECKMULTISIG,
+        ]);
     }
 }
