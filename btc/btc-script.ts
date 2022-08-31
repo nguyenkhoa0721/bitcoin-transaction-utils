@@ -160,6 +160,30 @@ function p2wshScriptSig(sig: any, pubKey: any) {
     return compileScript([pubKey, sig]);
 }
 
+function vi2h(num: number): Buffer {
+    let hex: Buffer = null;
+    if (num < 0xfd) {
+        hex = new BN(num).toBuffer('le', 1);
+    } else if (num < 0xffff) {
+        hex = n2h(num, 0xfd, 2);
+    } else if (num < 0xffffffff) {
+        hex = n2h(num, 0xfe, 4);
+    }
+    return hex;
+}
+function n2h(num: number, start: number, len: number): Buffer {
+    return Buffer.concat([Buffer.from(start.toString(16), 'hex'), new BN(num).toBuffer('le', len)]);
+}
+function h2vi(buffer: Buffer, offset: number): [number, number] {
+    let num = parseInt(buffer.subarray(0, 1).toString('hex'), 16);
+    if (num < 0xfd) {
+        return [num, offset + 1];
+    } else if (num < 0xffff) {
+        return [buffer.readUInt16LE(1), offset + 3];
+    } else if (num < 0xffffffff) {
+        return [buffer.readUInt32LE(1), offset + 6];
+    }
+}
 export {
     OPS,
     p2pkhScriptSig,
@@ -174,4 +198,7 @@ export {
     generateScript,
     bach32Decode,
     p2pkhScript,
+    p2shScriptSig,
+    vi2h,
+    h2vi,
 };
