@@ -22,6 +22,6 @@ export declare class MultiSigTransaction extends RawTransaction {
     constructor(n: number, m: number, pubKeys: Array<string>, isSegwit?: boolean);
     addMultiSigInput(address: string, txid: string, vout: number, signatures: Array<string>, amount?: string): void;
     sign(privKey: any, inputs: number[]): Promise<any>;
-    multiSigScriptSig(sigs: Array<Buffer>): Buffer;
+    multiSigScriptSig(sigs: Array<string>): Buffer;
     generateRedeemScript(): Buffer;
 }
