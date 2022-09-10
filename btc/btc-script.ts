@@ -137,7 +137,7 @@ function generateScript(type: string, address: string) {
             hash160PubKey = bach32Decode(address);
             return p2wpkhScript(hash160PubKey);
         case 'p2wsh':
-            hash160PubKey = Buffer.alloc(0);
+            hash160PubKey = bach32Decode(address);
             return p2wshScript(hash160PubKey);
         default:
             throw new Error('Unsupported script type');

@@ -46,11 +46,13 @@ async function multiSigTest() {
     );
     tx.addMultiSigInput(
         '2NERCTjns9kMGUrksHZagpKwb5VLiW4PRRv',
-        'd09ea67f8c62629a0dbaaf9a7864d9a13374d683b30a42b1ac91e422eececa89',
-        0,
-        []
+        '903591acab34daf4d23fdc6a6fd21ffed4535c413f5de33ac948f9f94c01a99a',
+        1,
+        [
+            '3045022100fd11a437ba359e4b231b5ea292b6c27c30c642f44e2209f92102bc05454490b702207561c377c684c7d714bb163008f505a232b2c046fcdd79e51017604d966a2f6201',
+        ]
     );
-    tx.addOutput('2NERCTjns9kMGUrksHZagpKwb5VLiW4PRRv', '60000');
+    tx.addOutput('2NERCTjns9kMGUrksHZagpKwb5VLiW4PRRv', '29000');
     console.log(tx.genHashId());
 
     const decodeTx = new MultiSigTransaction(
@@ -62,7 +64,7 @@ async function multiSigTest() {
         ],
         false
     );
-    await tx.sign('9626d2c1b8a2f2c0a7753a50980f96c8dcb4dddc622716bc50f6e72fe949dd0d', [0]);
+    // await tx.sign('9626d2c1b8a2f2c0a7753a50980f96c8dcb4dddc622716bc50f6e72fe949dd0d', [0]);
     await tx.sign('c00e2f845866c2f370e2e9648d996e0c022a50f104917e75255dcff034a5cdc9', [0]);
 
     decodeTx.fromHex(
@@ -71,7 +73,7 @@ async function multiSigTest() {
     console.log(decodeTx.genHashId());
     console.log(tx.toHex());
 
-    console.dir(tx.toJSON());
+    console.dir(tx.toJSON(), { depth: null });
     console.dir(decodeTx.toJSON());
 }
 multiSigTest();

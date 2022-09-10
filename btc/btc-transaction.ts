@@ -478,17 +478,21 @@ export class MultiSigTransaction extends RawTransaction {
         let signatures = await super.sign(privKey, inputs);
         for (let i in inputs) {
             let idx = Number(i);
-            this._tx.vins[inputs[idx]].signatures.push(signatures[idx]);
+            this._tx.vins[inputs[idx]].signatures.push(signatures[idx].toString('hex'));
             this._tx.vins[inputs[idx]].scriptSig = this.multiSigScriptSig(
                 this._tx.vins[inputs[idx]].signatures
             ).toString('hex');
         }
     }
-    multiSigScriptSig(sigs: Array<Buffer>): Buffer {
+    multiSigScriptSig(sigs: Array<string>): Buffer {
+        const bufSigs: Array<Buffer> = [];
+        for (let i in sigs) {
+            bufSigs.push(Buffer.from(sigs[i], 'hex'));
+        }
         if (this._n > 1)
             return compileScript([
                 OPS.OP_0,
-                ...sigs,
+                ...bufSigs,
                 OPS.OP_PUSHDATA1,
                 this.generateRedeemScript(),
             ]);
