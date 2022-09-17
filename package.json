@@ -20,6 +20,7 @@
     "devDependencies": {
         "@types/bn.js": "^5.1.0",
         "@types/bs58check": "^2.1.0",
+        "@types/crypto-js": "^4.1.1",
         "@types/node": "^18.7.3",
         "@types/secp256k1": "^4.0.3"
     },
@@ -28,6 +29,7 @@
         "bip66": "^1.1.5",
         "bs58check": "^2.1.2",
         "crypto": "^1.0.1",
+        "crypto-js": "^4.1.1",
         "secp256k1": "^4.0.3"
     }
 }

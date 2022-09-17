@@ -1,23 +1,41 @@
 import * as crypto from 'crypto';
+import CryptoJS from 'crypto-js';
+import { SHA256, RIPEMD160 } from 'crypto-js';
 import bs58check from 'bs58check';
 import { bech32 } from 'bech32';
 import OPS from './btc-ops-mapping';
 import BN from 'bn.js';
 let bip66 = require('bip66');
 
+function WordArrayToBuffer(wordArray: CryptoJS.lib.WordArray): Buffer {
+    const u8Array = new Uint8Array(wordArray.sigBytes);
+    for (let i = 0x0; i < wordArray.sigBytes; i++) {
+        u8Array[i] = (wordArray.words[i >>> 0x2] >>> (0x18 - (i % 0x4) * 0x8)) & 0xff;
+    }
+    return new Buffer(new Uint8Array(u8Array).buffer);
+}
+function BufferToWordArray(buffer: Buffer): CryptoJS.lib.WordArray {
+    var wa = [],
+        i: number;
+    for (i = 0; i < buffer.length; i++) {
+        wa[(i / 4) | 0] |= buffer[i] << (24 - 8 * i);
+    }
+
+    return CryptoJS.lib.WordArray.create(wa, buffer.length);
+}
 function hash160(data: any) {
     return ripemd160(sha256(data));
 }
-function sha256(data: any) {
-    let hash = crypto.createHash('sha256');
-    hash.update(data);
-    return hash.digest();
+
+function sha256(data: any): Buffer {
+    const wa = BufferToWordArray(data);
+    return WordArrayToBuffer(SHA256(wa));
 }
 function ripemd160(data: any) {
-    let hash = crypto.createHash('ripemd160');
-    hash.update(data);
-    return hash.digest();
+    const wa = BufferToWordArray(data);
+    return WordArrayToBuffer(RIPEMD160(wa));
 }
+
 function binaryStringToBuffer(binary: string) {
     const groups = binary.match(/[01]{8}/g);
     let numbers: number[] = [];
