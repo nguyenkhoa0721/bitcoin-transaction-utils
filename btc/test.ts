@@ -34,8 +34,55 @@ async function test() {
     // console.log(decodeTx.genHashId());
 }
 // test();
+// async function multiSigTest() {
+//     const tx1 = new MultiSigTransaction(
+//         2,
+//         2,
+//         [
+//             '03edb0a542f3d8299a9507ca9eb19e8c1900d411524051fd996d97190cd4276a9f',
+//             '02cdde5f4f8d7e896f9d13a8c4f63c1c4a8eb5dde48e3a883b13eaf6d038b3938c',
+//         ],
+//         false
+//     );
+//     tx1.addMultiSigInput(
+//         '2MtKeJzR9LeNVyWB8qzuJGJf8o2pEyHLGqe',
+//         '88b6d06f5d32e1b726519c1f4d82145acead26ed31d512b7fef1cb126c7e3e5d',
+//         0,
+//         []
+//     );
+//     tx1.addOutput('2NERCTjns9kMGUrksHZagpKwb5VLiW4PRRv', '4000 ');
+//     tx1.addOutput('2MtKeJzR9LeNVyWB8qzuJGJf8o2pEyHLGqe', '5000 ');
+//     await tx1.sign('40079d22afdb99501476393c26c0c548b0b9c349e7fe940554fd5d44694a679e', [0]);
+
+//     const tx2 = new MultiSigTransaction(
+//         2,
+//         2,
+//         [
+//             '03edb0a542f3d8299a9507ca9eb19e8c1900d411524051fd996d97190cd4276a9f',
+//             '02cdde5f4f8d7e896f9d13a8c4f63c1c4a8eb5dde48e3a883b13eaf6d038b3938c',
+//         ],
+//         false
+//     );
+
+//     for (let vin of tx1._tx.vins) {
+//         tx2.addMultiSigInput(vin.address, vin.txid, vin.vout, vin.signatures);
+//     }
+//     for (let vout of tx1._tx.vouts) {
+//         tx2.addOutput(vout.address, vout.value);
+//     }
+//     await tx2.sign('596cf4f04aec98c531a6585ba1e1ea67ba7833770ab05f1170356fb68b73231d', [0]);
+
+//     // decodeTx.fromHex(
+//     //     '020000000189caceee22e491acb1420ab383d67433a1d964789aafba0d9a62628c7fa69ed000000000fd1c01004830450221008823772d6e242f284833c818f8da3bf871efd7aec727f2a504a8c7e3ef2a0733022049508cd661df9f63f0bcf8b9cefe3f3c94a076c3ec05bcb09ac033132034fcad01483045022100957307d5fb79747e27bd9622f30edb9c1f62b21aee4b8f19504c80bde7d200a5022030ec0206d362f50956d58180532bf27d589e1a04b313ba2c9c724c41c0dc193a014c8752410416d99e3d63a5f9793822232c6393e0fb50945b0c07946e20c7236cc0ce6ed786044083b9af68fecadfe45a03517e6730fdced867deee221ef7175be162706dd54104089ae61e4014c9588cae4bd0a6aef3d44b1be674a1aa27cf9d8b50b1bb422026da4dc276e11823f531f84842d4b990380cc600ad99fe84fe2f2bbd927d98fe3652aeffffffff0160ea00000000000017a914e83d86d5bbdd8ede016f2236a6cb25ca9dc5cc328700000000'
+//     // );
+//     // console.log(decodeTx.genHashId());
+//     // console.log(tx1.toJSON());
+//     console.log(JSON.stringify(tx2.toJSON()));
+//     console.log(tx2.toHex());
+// }
+
 async function multiSigTest() {
-    const tx = new MultiSigTransaction(
+    const tx1 = new MultiSigTransaction(
         2,
         2,
         [
@@ -44,18 +91,16 @@ async function multiSigTest() {
         ],
         false
     );
-    tx.addMultiSigInput(
+    tx1.addMultiSigInput(
         '2NERCTjns9kMGUrksHZagpKwb5VLiW4PRRv',
-        '903591acab34daf4d23fdc6a6fd21ffed4535c413f5de33ac948f9f94c01a99a',
-        1,
-        [
-            '3045022100fd11a437ba359e4b231b5ea292b6c27c30c642f44e2209f92102bc05454490b702207561c377c684c7d714bb163008f505a232b2c046fcdd79e51017604d966a2f6201',
-        ]
+        '06a70e6de848be730eb284dd8d94a983acdd9e99ee3596b182756b247a633d91',
+        0,
+        []
     );
-    tx.addOutput('2NERCTjns9kMGUrksHZagpKwb5VLiW4PRRv', '29000');
-    console.log(tx.genHashId());
+    tx1.addOutput('2NERCTjns9kMGUrksHZagpKwb5VLiW4PRRv', '27000');
+    await tx1.sign('9626d2c1b8a2f2c0a7753a50980f96c8dcb4dddc622716bc50f6e72fe949dd0d', [0]);
 
-    const decodeTx = new MultiSigTransaction(
+    const tx2 = new MultiSigTransaction(
         2,
         2,
         [
@@ -64,16 +109,19 @@ async function multiSigTest() {
         ],
         false
     );
-    // await tx.sign('9626d2c1b8a2f2c0a7753a50980f96c8dcb4dddc622716bc50f6e72fe949dd0d', [0]);
-    await tx.sign('c00e2f845866c2f370e2e9648d996e0c022a50f104917e75255dcff034a5cdc9', [0]);
 
-    decodeTx.fromHex(
-        '020000000189caceee22e491acb1420ab383d67433a1d964789aafba0d9a62628c7fa69ed000000000fd1c01004830450221008823772d6e242f284833c818f8da3bf871efd7aec727f2a504a8c7e3ef2a0733022049508cd661df9f63f0bcf8b9cefe3f3c94a076c3ec05bcb09ac033132034fcad01483045022100957307d5fb79747e27bd9622f30edb9c1f62b21aee4b8f19504c80bde7d200a5022030ec0206d362f50956d58180532bf27d589e1a04b313ba2c9c724c41c0dc193a014c8752410416d99e3d63a5f9793822232c6393e0fb50945b0c07946e20c7236cc0ce6ed786044083b9af68fecadfe45a03517e6730fdced867deee221ef7175be162706dd54104089ae61e4014c9588cae4bd0a6aef3d44b1be674a1aa27cf9d8b50b1bb422026da4dc276e11823f531f84842d4b990380cc600ad99fe84fe2f2bbd927d98fe3652aeffffffff0160ea00000000000017a914e83d86d5bbdd8ede016f2236a6cb25ca9dc5cc328700000000'
-    );
-    console.log(decodeTx.genHashId());
-    console.log(tx.toHex());
+    for (let vin of tx1._tx.vins) {
+        tx2.addMultiSigInput(vin.address, vin.txid, vin.vout, vin.signatures);
+    }
+    for (let vout of tx1._tx.vouts) {
+        tx2.addOutput(vout.address, vout.value);
+    }
+    await tx2.sign('c00e2f845866c2f370e2e9648d996e0c022a50f104917e75255dcff034a5cdc9', [0]);
 
-    console.dir(tx.toJSON(), { depth: null });
-    console.dir(decodeTx.toJSON());
+    console.log(tx1.toJSON());
+    console.log(tx2.toJSON());
+
+    console.log(tx2.toHex());
 }
+
 multiSigTest();

@@ -81,7 +81,10 @@ function compileScript(chunks: any[]) {
             chunk.copy(buffer, offset);
             offset += chunk.length;
         } else {
-            new Buffer(chunk.toString(16), 'hex').copy(buffer, offset);
+            //@TODO len of chunk must be 2 for react native
+            let strChunk = chunk.toString(16);
+            if (strChunk.length == 1) strChunk = '0' + strChunk;
+            new Buffer(strChunk, 'hex').copy(buffer, offset);
             offset += 1;
         }
     }
