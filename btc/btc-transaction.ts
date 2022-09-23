@@ -489,14 +489,7 @@ export class MultiSigTransaction extends RawTransaction {
         for (let i in sigs) {
             bufSigs.push(Buffer.from(sigs[i], 'hex'));
         }
-        if (this._n > 1)
-            return compileScript([
-                OPS.OP_0,
-                ...bufSigs,
-                OPS.OP_PUSHDATA1,
-                this.generateRedeemScript(),
-            ]);
-        else return compileScript([OPS.OP_0, ...sigs, this.generateRedeemScript()]);
+        return compileScript([OPS.OP_0, ...bufSigs, this.generateRedeemScript()]);
     }
     generateRedeemScript(): Buffer {
         return compileScript([

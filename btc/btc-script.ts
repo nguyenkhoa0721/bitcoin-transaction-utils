@@ -5,6 +5,7 @@ import bs58check from 'bs58check';
 import { bech32 } from 'bech32';
 import OPS from './btc-ops-mapping';
 import BN from 'bn.js';
+import OP_CODE from './btc-ops-mapping';
 let bip66 = require('bip66');
 
 function WordArrayToBuffer(wordArray: CryptoJS.lib.WordArray): Buffer {
@@ -76,8 +77,25 @@ function compileScript(chunks: any[]) {
     let offset = 0;
     for (let chunk of chunks) {
         if (chunk instanceof Buffer) {
-            buffer.writeUInt16LE(chunk.length, offset);
-            offset += 1;
+            if (chunk.length < 0x4c) {
+                buffer.writeUInt8(chunk.length, offset);
+                offset += 1;
+            } else if (chunk.length <= 0xff) {
+                buffer.writeUInt8(OP_CODE.OP_PUSHDATA1, offset);
+                offset += 1;
+                buffer.writeUInt8(chunk.length, offset);
+                offset += 1;
+            } else if (chunk.length <= 0xffff) {
+                buffer.writeUInt8(OP_CODE.OP_PUSHDATA2, offset);
+                offset += 1;
+                buffer.writeUInt16LE(chunk.length, offset);
+                offset += 2;
+            } else {
+                buffer.writeUInt8(OP_CODE.OP_PUSHDATA4, offset);
+                offset += 1;
+                buffer.writeUInt32LE(chunk.length, offset);
+                offset += 4;
+            }
             chunk.copy(buffer, offset);
             offset += chunk.length;
         } else {
